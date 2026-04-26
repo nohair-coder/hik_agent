@@ -1,5 +1,17 @@
 # 工程文档生成助手 - 快速启动指南
 
+> 🚀 **一键启动所有服务**（包括 Ollama、ChromaDB、后端、前端）
+
+```bash
+cd ~/Desktop/hik_agent && make start
+```
+
+就这样！所有服务会在后台启动，访问 **http://localhost:1420** 使用应用。
+
+> 💡 **第一次使用?** 查看 [QUICKSTART.md](./QUICKSTART.md) | [AUTOMATION_SETUP.md](./AUTOMATION_SETUP.md)
+
+---
+
 ## 技术栈
 
 | 层 | 技术 |
@@ -43,24 +55,68 @@ docker run -p 8001:8000 -v $(pwd)/data/chroma_db:/chroma/chroma chromadb/chroma
 
 ---
 
-## 启动服务
+## 🚀 快速启动
+
+### 方式 1: 一键启动（推荐）
+
+```bash
+# 安装依赖并启动所有服务
+make start
+
+# 或查看详细启动选项
+make help
+```
+
+### 方式 2: 完整启动脚本
+
+```bash
+bash start-all.sh
+```
+
+### 方式 3: 手动启动（分终端）
+
+**终端 1: Ollama**
+```bash
+ollama serve
+```
+
+**终端 2: ChromaDB**
+```bash
+docker run -p 8001:8000 -v $(pwd)/data/chroma_db:/chroma/chroma chromadb/chroma
+```
+
+**终端 3: 后端**
+```bash
+cd backend
+yarn start
+```
+
+**终端 4: 前端**
+```bash
+cd frontend
+yarn dev
+```
+
+> 💡 **提示**：详见 [QUICKSTART.md](./QUICKSTART.md) 了解更多启动选项和故障排查
+
+---
+
+## 启动服务详细说明
 
 ### 后端（TypeScript + Node.js）
 
 ```bash
 cd backend
-npm install
-npm run dev
-# 服务运行在 http://localhost:8000
+yarn install    # 首次需要
+yarn start      # 启动 Hono 服务器，运行在 http://localhost:8000
 ```
 
 ### 前端（React + Vite）
 
 ```bash
 cd frontend
-npm install
-npm run dev
-# 浏览器访问 http://localhost:1420
+yarn install    # 首次需要
+yarn dev        # 启动开发服务器，访问 http://localhost:1420
 ```
 
 ### Tauri 桌面应用（可选）
@@ -68,7 +124,7 @@ npm run dev
 ```bash
 # 需要先安装 Rust: https://rustup.rs
 cd frontend
-npm run tauri dev
+yarn tauri dev
 ```
 
 ---
@@ -145,3 +201,36 @@ STYLE_RETRIEVER_K=3
 **Q: 生成速度慢**
 - 确认 Ollama 使用 GPU：`ollama ps` 查看是否有显卡占用
 - 无独显时 CPU 推理约 10-30 tokens/秒，属正常速度
+
+---
+
+## 📚 更多文档
+
+| 文档 | 说明 |
+|------|------|
+| [QUICKSTART.md](./QUICKSTART.md) | 🚀 快速启动指南，包含各种启动方式和 Makefile 命令 |
+| [PLATFORM.md](./PLATFORM.md) | 💻 平台特定配置（macOS/Windows/Linux） |
+| [docs/plans/](./docs/plans/) | 📋 项目规划和技术设计文档 |
+
+---
+
+## 快速命令速查
+
+```bash
+# 一键启动所有服务
+make start
+
+# 查看所有可用命令
+make help
+
+# 检查服务状态
+make status
+
+# 查看日志
+make logs
+
+# 停止所有服务
+make stop
+```
+
+详见 [QUICKSTART.md](./QUICKSTART.md) 了解更多。

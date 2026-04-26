@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Ollama - LLM 和 Embedding 服务
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hik-agent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    profiles:
+      - full
+    # 可选：取消注释以使用 GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # ChromaDB - 向量数据库
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: hik-agent-chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - CHROMA_HOST_TYPE=rest
+    profiles:
+      - full
+
+volumes:
+  ollama-data:
+    driver: local
+  chroma-data:
+    driver: local
+
+# 使用说明：
+#
+# 1. 启动所有服务（包含 Ollama 和 ChromaDB）：
+#    docker-compose up -d
+#
+# 2. 仅启动 ChromaDB（Ollama 本地运行）：
+#    docker-compose --profile full up -d chroma
+#
+# 3. 查看日志：
+#    docker-compose logs -f ollama
+#    docker-compose logs -f chroma
+#
+# 4. 停止服务：
+#    docker-compose down
+#
+# 5. 清理数据卷：
+#    docker-compose down -v

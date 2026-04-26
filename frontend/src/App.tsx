@@ -73,7 +73,7 @@ const App: React.FC = () => {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Text strong style={{ color: "#fff", fontSize: 16 }}>
-            工程文档生成助手
+            黎明专用文档小助手
           </Text>
           <Badge
             status={backendOnline ? "success" : "error"}

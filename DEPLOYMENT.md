@@ -4,12 +4,9 @@
 
 本项目已配置自动 CI/CD 流程，在代码 merge 到 `main` 分支时自动部署到阿里云服务器。
 
-## 架构
+使用 **PM2 进程管理器** 在生产环境中运行应用。
 
-- **GitHub Actions**：监听 main 分支的推送，自动构建和部署
-- **Docker + Docker Compose**：容器化部署
-- **SSH + sshpass**：安全连接到阿里云服务器
-- **Nginx**：反向代理前端和后端
+**详细文档：** [PM2_DEPLOYMENT.md](./PM2_DEPLOYMENT.md)
 
 ## 环境变量配置
 
@@ -21,29 +18,32 @@
 | `ALIYUN_USER` | `root` | SSH 用户名 |
 | `ALIYUN_PASSWORD` | `Wangxuezhishi32!` | SSH 密码 |
 
-### 添加步骤
+详见：[GITHUB_SECRETS.md](./GITHUB_SECRETS.md)
 
-1. 打开 GitHub 仓库主页
-2. 点击 **Settings**（设置）
-3. 左侧菜单选择 **Secrets and variables** > **Actions**
-4. 点击 **New repository secret**（新建仓库密钥）
-5. 分别添加上述三个密钥及其值
+---
 
-**注意**：不要在代码中提交密码，使用 GitHub Secrets 来安全存储。
+## 部署架构
+
+- **GitHub Actions**：监听 main 分支的推送，自动构建和部署
+- **PM2**：进程管理和自动重启
+- **SSH + sshpass**：安全连接到阿里云服务器
 
 ## 服务器初始化
 
-首次部署前，需要在阿里云服务器上初始化环境：
+首次部署时，CI/CD 流程会自动检查服务器环境并初始化（如果需要）。
+
+初始化脚本会自动：
+- ✅ 安装 Node.js 20 和 Yarn
+- ✅ 安装 PM2 全局
+- ✅ 安装 Ollama（LLM 服务）
+- ✅ 安装 ChromaDB（向量数据库）
+- ✅ 创建日志目录
+- ✅ 配置开机自启
+
+**如需手动初始化服务器：**
 
 ```bash
-# 本地运行
-sshpass -p "Wangxuezhishi32!" ssh root@8.136.151.205 'bash -s' < scripts/init-server.sh
-```
-
-或者手动登录服务器后运行：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/hik_agent/main/scripts/init-server.sh | bash
+sshpass -p "Wangxuezhishi32!" ssh root@8.136.151.205 'bash -s' < scripts/init-server-pm2.sh
 ```
 
 ## 部署流程
@@ -51,9 +51,13 @@ curl -fsSL https://raw.githubusercontent.com/yourusername/hik_agent/main/scripts
 ### 自动部署（推荐）
 
 1. 在本地开发并提交代码
-2. 创建 Pull Request 到 `main` 分支
-3. PR 被 merge 后，GitHub Actions 自动触发
-4. 系统自动构建、测试并部署到阿里云
+2. Push 到 `main` 分支（或创建 PR merge 到 main）
+3. GitHub Actions 自动触发：
+   - ✅ 构建后端和前端
+   - ✅ 初始化服务器（如需要）
+   - ✅ 上传代码到服务器
+   - ✅ 使用 PM2 启动/重启服务
+   - ✅ 验证服务状态
 
 ### 查看部署状态
 
@@ -74,43 +78,49 @@ curl -fsSL https://raw.githubusercontent.com/yourusername/hik_agent/main/scripts
 ## 文件说明
 
 ### `.github/workflows/deploy.yml`
-GitHub Actions 工作流配置，定义了完整的 CI/CD 流程。
+GitHub Actions 工作流配置，定义了完整的 CI/CD 流程（构建、初始化、部署）。
 
-### `backend/Dockerfile`
-后端 Node.js 应用容器化配置。
+### `ecosystem.config.js`
+PM2 进程管理配置，定义了后端和前端应用的启动参数和日志位置。
 
-### `frontend/Dockerfile`
-前端 React 应用容器化配置（使用多阶段构建 + Nginx）。
-
-### `frontend/nginx.conf`
-Nginx 反向代理配置，处理前端路由和 API 代理。
-
-### `docker-compose.prod.yml`
-生产环境 Docker Compose 配置，编排所有服务。
-
-### `scripts/init-server.sh`
-服务器初始化脚本，自动安装 Docker 和 Docker Compose。
+### `scripts/init-server-pm2.sh`
+服务器初始化脚本，自动安装 Node.js、PM2、Ollama、ChromaDB 等依赖。
 
 ## 手动部署
 
-如果需要手动部署，连接到服务器后运行：
+如果需要手动部署，可以按以下步骤操作：
+
+### 第一步：构建应用
 
 ```bash
-# SSH 连接
-sshpass -p "Wangxuezhishi32!" ssh root@8.136.151.205
-
-# 在服务器上
-cd /opt/hik-agent
-
-# 拉取最新代码
-git pull
-
-# 启动服务
-docker-compose -f docker-compose.prod.yml up -d
-
-# 查看日志
-docker-compose -f docker-compose.prod.yml logs -f
+cd backend && yarn build
+cd ../frontend && yarn build
 ```
+
+### 第二步：上传代码
+
+```bash
+# 上传后端
+sshpass -p "Wangxuezhishi32!" scp -r backend/dist root@8.136.151.205:/opt/hik-agent/backend/
+
+# 上传前端
+sshpass -p "Wangxuezhishi32!" scp -r frontend/dist root@8.136.151.205:/opt/hik-agent/frontend/
+
+# 上传 PM2 配置
+sshpass -p "Wangxuezhishi32!" scp ecosystem.config.js root@8.136.151.205:/opt/hik-agent/
+```
+
+### 第三步：重启服务
+
+```bash
+sshpass -p "Wangxuezhishi32!" ssh root@8.136.151.205 << 'EOF'
+cd /opt/hik-agent
+pm2 restart all
+pm2 list
+EOF
+```
+
+详见：[PM2_DEPLOYMENT.md](./PM2_DEPLOYMENT.md)
 
 ## 故障排查
 
@@ -119,37 +129,41 @@ docker-compose -f docker-compose.prod.yml logs -f
 1. 检查 GitHub Actions 日志：仓库 > Actions > 失败的工作流
 2. 常见问题：
    - SSH 连接失败：检查 IP、用户名、密码是否正确
-   - Docker 未安装：运行初始化脚本
-   - 端口被占用：检查防火墙规则
+   - 权限错误：确保 root 用户可以访问 /opt/hik-agent 目录
+   - PM2 启动失败：查看 `/var/log/hik/` 目录的日志文件
+
+### 应用无法启动
+
+在服务器上查看日志：
+
+```bash
+pm2 logs hik-backend --lines 50
+pm2 logs hik-frontend --lines 50
+```
 
 ### 服务无法访问
 
-1. 检查防火墙规则：
-   ```bash
-   # 在服务器上
-   sudo ufw allow 1420/tcp
-   sudo ufw allow 8000/tcp
-   sudo ufw allow 11434/tcp
-   sudo ufw allow 8001/tcp
-   ```
-
-2. 检查容器状态：
-   ```bash
-   docker ps -a
-   docker-compose -f docker-compose.prod.yml logs
-   ```
-
-### 删除/更新部署
+1. 检查应用是否运行：
 
 ```bash
-# 停止所有服务
-docker-compose -f docker-compose.prod.yml down
+pm2 list
+```
 
-# 删除所有数据卷
-docker-compose -f docker-compose.prod.yml down -v
+2. 检查防火墙规则：
 
-# 重新启动
-docker-compose -f docker-compose.prod.yml up -d
+```bash
+# 在服务器上
+sudo ufw allow 1420/tcp
+sudo ufw allow 8000/tcp
+sudo ufw allow 11434/tcp
+sudo ufw allow 8001/tcp
+```
+
+3. 检查进程状态：
+
+```bash
+curl http://localhost:8000/health        # 后端
+curl http://localhost:1420               # 前端
 ```
 
 ## 安全建议
@@ -171,35 +185,58 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ### 后端环境变量
 
-在 `backend/.env` 中配置：
+在 `backend/.env` 或 `ecosystem.config.js` 中配置：
 
 ```env
 NODE_ENV=production
 PORT=8000
-CHROMA_HOST=chroma
-CHROMA_PORT=8000
-OLLAMA_HOST=http://ollama:11434
+CHROMA_URL=http://localhost:8001
+OLLAMA_BASE_URL=http://localhost:11434
+MODEL_NAME=qwen2.5:7b
+EMBEDDING_MODEL=bge-m3
 ```
 
 ### 前端环境变量
 
-在 `frontend/.env` 中配置：
+在 `frontend/.env` 中配置（如需要）：
 
 ```env
-REACT_APP_API_BASE_URL=http://8.136.151.205:8000/api
+VITE_API_BASE_URL=http://8.136.151.205:8000/api
 ```
 
-## 更新部署
+## PM2 管理
 
-1. 在本地开发并测试
-2. 提交代码并创建 PR
-3. Merge 到 main 后自动部署
-4. 或者手动触发工作流：
-   ```bash
-   # 使用 GitHub CLI
-   gh workflow run deploy.yml
-   ```
+在服务器上可以使用以下命令管理应用：
+
+```bash
+# 查看进程列表
+pm2 list
+
+# 查看实时监控
+pm2 monit
+
+# 查看日志
+pm2 logs hik-backend
+pm2 logs hik-frontend
+
+# 重启应用
+pm2 restart all
+pm2 restart hik-backend
+
+# 停止应用
+pm2 stop all
+pm2 delete all
+```
+
+详见：[PM2_DEPLOYMENT.md](./PM2_DEPLOYMENT.md)
+
+---
 
 ## 支持和反馈
 
-如有问题，请提交 Issue 或检查日志了解详细错误信息。
+如有问题，请：
+
+1. 检查 GitHub Actions 日志
+2. 查看服务器上的日志文件：`/var/log/hik/`
+3. 使用 `pm2 logs` 查看实时日志
+4. 提交 Issue 提供详细错误信息

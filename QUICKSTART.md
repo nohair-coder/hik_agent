@@ -2,46 +2,56 @@
 
 ## 一键启动所有服务
 
-### 方式 1: 使用 Makefile（推荐）
+### 方式 1️⃣：Makefile（⭐ 推荐）
 
-**首次启动（包含依赖安装）：**
 ```bash
-make start
+cd ~/Desktop/hik_agent
+make start                  # 启动所有服务
+make help                   # 显示所有可用命令
+make status                 # 检查服务状态
+make logs                   # 查看服务日志
+make stop                   # 停止所有服务
+make clean                  # 清理临时文件
 ```
 
-**快速启动（仅启动服务）：**
+完整命令列表：
 ```bash
-make start
+make install           # 安装依赖
+make start             # 快速启动（推荐）
+make start-all         # 完整启动脚本
+make start-ollama      # 仅启动 Ollama
+make start-chroma      # 仅启动 ChromaDB  
+make start-backend     # 仅启动后端
+make start-frontend    # 仅启动前端
 ```
 
-**查看命令帮助：**
-```bash
-make help
-```
+---
 
-### 方式 2: 使用启动脚本
+### 方式 2️⃣：启动脚本
 
-**完整启动全部服务：**
+**在单个终端中运行全部服务：**
 ```bash
 bash start-all.sh
 ```
 
-**单独启动各个服务：**
+**或在不同终端运行各个服务：**
 ```bash
-# 终端 1: Ollama
+# 终端 1
 bash scripts/start-ollama.sh
 
-# 终端 2: ChromaDB
+# 终端 2
 bash scripts/start-chroma.sh
 
-# 终端 3: 后端
+# 终端 3
 bash scripts/start-backend.sh
 
-# 终端 4: 前端
+# 终端 4
 bash scripts/start-frontend.sh
 ```
 
-### 方式 3: 手动启动
+---
+
+### 方式 3️⃣：手动启动
 
 ```bash
 # 终端 1: Ollama
@@ -59,22 +69,20 @@ cd frontend && yarn dev
 
 ---
 
-## 常用 Makefile 命令
+### 方式 4️⃣：Docker Compose
 
-| 命令 | 说明 |
-|------|------|
-| `make help` | 显示所有可用命令 |
-| `make install` | 安装前后端依赖 |
-| `make start` | 🚀 快速启动所有服务 |
-| `make start-all` | 完整启动脚本 |
-| `make start-ollama` | 仅启动 Ollama |
-| `make start-chroma` | 仅启动 ChromaDB |
-| `make start-backend` | 仅启动后端 |
-| `make start-frontend` | 仅启动前端 |
-| `make status` | 检查所有服务状态 |
-| `make logs` | 查看所有服务日志 |
-| `make stop` | 停止所有服务 |
-| `make clean` | 清理临时文件 |
+```bash
+docker-compose up -d     # 启动 Ollama 和 ChromaDB
+docker-compose ps        # 查看运行状态
+docker-compose logs -f   # 查看日志
+docker-compose down      # 停止服务
+```
+
+然后启动应用：
+```bash
+cd backend && yarn start
+cd frontend && yarn dev
+```
 
 ---
 
@@ -92,6 +100,43 @@ cd frontend && yarn dev
 
 ---
 
+## 诊断工具
+
+### 检查服务状态
+
+```bash
+bash scripts/check-status.sh
+```
+
+这个脚本会检查：
+- ✓ 所有基础服务是否运行
+- ✓ 模型是否已下载
+- ✓ 依赖是否已安装
+- ✓ 端口是否被占用
+
+### 查看服务日志
+
+```bash
+make logs                  # 查看所有服务日志
+
+# 或单独查看
+tail -f /tmp/ollama.log    # Ollama 日志
+tail -f /tmp/chroma.log    # ChromaDB 日志
+tail -f /tmp/backend.log   # 后端日志
+tail -f /tmp/frontend.log  # 前端日志
+```
+
+### 测试网络连接
+
+```bash
+# 测试各服务的连通性
+curl http://localhost:11434/api/tags      # Ollama
+curl http://localhost:8001/api/v1/heartbeat  # ChromaDB
+curl http://localhost:8000/health         # 后端
+```
+
+---
+
 ## 故障排查
 
 ### ❌ Ollama 启动失败
@@ -102,6 +147,8 @@ cd frontend && yarn dev
 1. 检查 Ollama 是否安装：`ollama version`
 2. 未安装请访问 https://ollama.ai 下载
 3. macOS 用户可以直接打开应用：`open -a Ollama`
+
+---
 
 ### ❌ ChromaDB 连接失败
 
@@ -116,6 +163,8 @@ cd frontend && yarn dev
    ```
 3. 或更改端口：`CHROMA_URL=http://localhost:8002 yarn start`
 
+---
+
 ### ❌ 后端模型预热失败
 
 **问题：** `LLM 预热失败（请确认 Ollama 已启动）`
@@ -128,6 +177,8 @@ cd frontend && yarn dev
    ollama pull qwen2.5:7b
    ollama pull bge-m3
    ```
+
+---
 
 ### ❌ 端口被占用
 
@@ -145,6 +196,28 @@ kill -9 <PID>
 
 ---
 
+### ❌ 模型未下载
+
+**原因：** Ollama 服务未启动或模型未下载
+
+**解决方案：**
+```bash
+# 1. 启动 Ollama
+ollama serve
+
+# 2. 在另一个终端中下载模型
+ollama pull qwen2.5:7b
+ollama pull bge-m3
+
+# 3. 验证模型
+ollama list
+
+# 4. 重启后端
+make start-backend
+```
+
+---
+
 ## 性能建议
 
 - **首次启动较慢**：Ollama 和 bge-m3 首次加载需要 30-60 秒
@@ -154,20 +227,24 @@ kill -9 <PID>
 
 ---
 
-## macOS 特定配置
-
-### 方便快捷方式设置
+## macOS 快捷别名设置
 
 在 `~/.zshrc` 或 `~/.bash_profile` 中添加别名：
 
 ```bash
-alias hik-start='cd ~/Desktop/hik_agent && make start'
-alias hik-stop='cd ~/Desktop/hik_agent && make stop'
-alias hik-logs='cd ~/Desktop/hik_agent && make logs'
-alias hik-status='cd ~/Desktop/hik_agent && make status'
+alias hik='cd ~/Desktop/hik_agent'
+alias hik-start='hik && make start'
+alias hik-stop='hik && make stop'
+alias hik-logs='hik && make logs'
+alias hik-status='hik && make status'
 ```
 
-然后就可以直接运行：
+然后重新加载：
+```bash
+source ~/.zshrc
+```
+
+使用：
 ```bash
 hik-start    # 启动所有服务
 hik-stop     # 停止所有服务
@@ -177,33 +254,7 @@ hik-status   # 检查状态
 
 ---
 
-## 完整启动流程示例
-
-```bash
-# 1. 进入项目目录
-cd ~/Desktop/hik_agent
-
-# 2. 一键启动（推荐）
-make start
-
-# 3. 检查服务状态
-make status
-
-# 4. 访问应用
-open http://localhost:1420
-
-# 5. 查看日志（如需排查问题）
-make logs
-
-# 6. 完成工作后停止服务
-make stop
-```
-
----
-
-## 在后台长期运行
-
-如果需要服务持续运行，可以使用以下方法：
+## 后台持久运行
 
 ### 方法 1: 使用 tmux（推荐）
 ```bash
@@ -243,3 +294,35 @@ WantedBy=default.target
 ```bash
 systemctl --user start hik-agent
 ```
+
+---
+
+## 完整启动流程示例
+
+```bash
+# 1. 进入项目目录
+cd ~/Desktop/hik_agent
+
+# 2. 一键启动（推荐）
+make start
+
+# 3. 检查服务状态
+make status
+
+# 4. 访问应用
+open http://localhost:1420
+
+# 5. 查看日志（如需排查问题）
+make logs
+
+# 6. 完成工作后停止服务
+make stop
+```
+
+---
+
+## 更多信息
+
+- **平台特定配置**：[PLATFORM.md](./PLATFORM.md)（Windows/Linux/macOS）
+- **部署指南**：[DEPLOYMENT.md](./DEPLOYMENT.md)
+- **GitHub Secrets 配置**：[GITHUB_SECRETS.md](./GITHUB_SECRETS.md)

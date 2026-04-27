@@ -12,8 +12,6 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 8000,
-        CHROMA_URL: 'http://localhost:8001',
-        OLLAMA_BASE_URL: 'http://localhost:11434',
       },
       error_file: '/var/log/hik/backend-error.log',
       out_file: '/var/log/hik/backend-out.log',

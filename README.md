@@ -12,31 +12,15 @@
 |---|---|
 | 后端框架 | Node.js + Hono v4 |
 | AI 框架 | LangChain.js v1 (LCEL) |
-| 本地大模型 | Ollama + Qwen2.5-7B |
 | 向量数据库 | ChromaDB |
-| 中文 Embedding | bge-m3（通过 Ollama） |
+| 中文 Embedding | bge-m3 |
 | 前端 | React 18 + Ant Design 5 + Tauri v2 |
 
 ---
 
 ## 前置要求
 
-### 1. 安装 Ollama 并拉取模型
-
-```bash
-# 安装 Ollama: https://ollama.ai
-
-# 拉取 LLM 模型（约 4.7GB）
-ollama pull qwen2.5:7b
-
-# 拉取 Embedding 模型（约 1.2GB，与 Python 版本完全一致）
-ollama pull bge-m3
-
-# 确认模型已就绪
-ollama list
-```
-
-### 2. 启动 ChromaDB
+### 1. 启动 ChromaDB
 
 ```bash
 # 方式一：pip 安装后直接运行
@@ -86,7 +70,7 @@ hik_agent/
 │   │   ├── chains/
 │   │   │   └── ragChain.ts   # LangChain.js LCEL RAG 链
 │   │   ├── embeddings/
-│   │   │   └── stores.ts     # ChromaDB + OllamaEmbeddings 单例
+│   │   │   └── stores.ts     # ChromaDB Embeddings 单例
 │   │   ├── loaders/
 │   │   │   └── pipeline.ts   # 文档解析与入库
 │   │   ├── prompts/

@@ -4,18 +4,11 @@
 
 ### 前置要求
 
-1. **安装 Ollama（必须）**
-   ```bash
-   # 访问 https://ollama.ai 下载 macOS 版本
-   # 或使用 Homebrew：
-   brew install ollama
-   ```
-
-2. **安装 Docker（可选，用于 ChromaDB）**
-   ```bash
-   brew install docker docker-compose
-   # 或下载 Docker Desktop: https://www.docker.com/products/docker-desktop
-   ```
+1. **安装 Docker（可选，用于 ChromaDB）**
+    ```bash
+    brew install docker
+    # 或下载 Docker Desktop: https://www.docker.com/products/docker-desktop
+    ```
 
 3. **安装 Node.js**
    ```bash
@@ -31,22 +24,11 @@ cd ~/Desktop/hik_agent
 make start
 ```
 
-**方式 2：打开应用 + 命令行**
+**方式 2：命令行启动**
 ```bash
-# 1. 从 Applications 打开 Ollama 应用
-open -a Ollama
-
-# 2. 在终端启动后端和前端
 cd ~/Desktop/hik_agent
 bash scripts/start-backend.sh &
 bash scripts/start-frontend.sh &
-```
-
-**方式 3：Docker Compose**
-```bash
-docker-compose up -d  # 启动 Ollama 和 ChromaDB
-cd ~/Desktop/hik_agent
-yarn dev  # 前端（或后端）
 ```
 
 ### Zsh 别名（可选快捷方式）
@@ -76,9 +58,8 @@ hik-status  # 检查运行状态
 
 ### 性能建议
 
-- **M1/M2 Mac**：Ollama 自动使用 GPU 加速，性能最佳
 - **内存**：建议至少 8GB，16GB+ 推荐
-- **磁盘**：预留 20GB 以上空间（模型 + Docker 镜像）
+- **磁盘**：预留 20GB 以上空间（Docker 镜像）
 
 ---
 
@@ -86,11 +67,7 @@ hik-status  # 检查运行状态
 
 ### 前置要求
 
-1. **安装 Ollama**
-   - 下载：https://ollama.ai
-   - 或使用 Windows Package Manager：`winget install Ollama.Ollama`
-
-2. **安装 Docker Desktop**
+1. **安装 Docker Desktop**
    - 下载：https://www.docker.com/products/docker-desktop
    - 启用 WSL 2 后端
 
@@ -108,23 +85,10 @@ cd C:\Users\<YourUsername>\Desktop\hik_agent
 make start
 ```
 
-**方式 2：Docker Compose（推荐）**
-```powershell
-docker-compose up -d
-# 在另一个 PowerShell 窗口
-cd C:\Users\<YourUsername>\Desktop\hik_agent
-yarn install
-yarn dev
-```
-
-**方式 3：PowerShell 脚本**
+**方式 2：PowerShell 脚本**
 
 创建 `start-all.ps1`：
 ```powershell
-# 启动 Ollama
-Start-Process "ollama" -ArgumentList "serve"
-Start-Sleep -Seconds 3
-
 # 启动 ChromaDB (Docker)
 docker run -d -p 8001:8000 -v ./data/chroma_db:/chroma/chroma chromadb/chroma
 
@@ -141,10 +105,6 @@ Start-Process powershell -ArgumentList "-Command `"cd frontend; yarn dev`""
 ```
 
 ### 常见问题
-
-**问题：Ollama 启动失败**
-- 确保 Ollama 应用已打开（在系统托盘中）
-- 检查防火墙是否阻止了端口 11434
 
 **问题：Docker 容器无法启动**
 - 确保 Docker Desktop 正在运行
@@ -173,9 +133,6 @@ npm install -g yarn
 # 安装 Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
-
-# 安装 Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
 ```
 
 ### 推荐启动方式
@@ -229,49 +186,10 @@ systemctl --user status hik-frontend
 systemctl --user enable hik-backend hik-frontend
 ```
 
-**方式 2：Docker Compose（最简单）**
-```bash
-cd ~/Desktop/hik_agent
-docker-compose up -d
-yarn install
-yarn dev
-```
-
-**方式 3：Makefile**
+**方式 2：Makefile**
 ```bash
 cd ~/Desktop/hik_agent
 make start
-```
-
-### GPU 加速（NVIDIA）
-
-如果有 NVIDIA GPU，可以加速模型推理：
-
-1. 安装 NVIDIA Container Toolkit：
-```bash
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
-  sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-sudo apt update && sudo apt install -y nvidia-container-toolkit
-```
-
-2. 修改 `docker-compose.yml` 启用 GPU：
-```yaml
-ollama:
-  image: ollama/ollama:latest
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu]
-```
-
-3. 启动：
-```bash
-docker-compose up -d
 ```
 
 ### Nohup 后台运行
@@ -289,24 +207,6 @@ tail -f ~/hik_frontend.log
 ```
 
 ---
-
-## Docker Compose 多合一启动
-
-对于所有平台，最简单的方式是使用 Docker Compose：
-
-```bash
-# 启动 Ollama 和 ChromaDB
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
-
-# 清理卷数据
-docker-compose down -v
-```
 
 ---
 
@@ -362,13 +262,11 @@ sudo systemctl restart nginx
 # macOS/Linux
 lsof -i :8000    # 后端
 lsof -i :1420    # 前端
-lsof -i :11434   # Ollama
 lsof -i :8001    # ChromaDB
 ```
 
 ### 查看进程
 ```bash
-ps aux | grep ollama
 ps aux | grep chroma
 ps aux | grep yarn
 ```
@@ -376,7 +274,6 @@ ps aux | grep yarn
 ### 网络诊断
 ```bash
 # 测试连接
-curl http://localhost:11434/api/tags
 curl http://localhost:8001/api/v1/heartbeat
 curl http://localhost:8000/health
 ```

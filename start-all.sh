@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 工程文档生成助手 - 一键启动脚本
-# 快速启动所有服务: Ollama + ChromaDB + 后端 + 前端
+# 快速启动所有服务: ChromaDB + 后端 + 前端
 
 set -e
 
@@ -18,15 +18,7 @@ echo ""
 
 # ── 检查依赖 ────────────────────────────────────────────
 
-echo -e "${BLUE}[1/5] 检查依赖...${NC}"
-
-# 检查 Ollama
-if ! command -v ollama &> /dev/null; then
-    echo -e "${RED}✗ Ollama 未安装${NC}"
-    echo "   请访问 https://ollama.ai 下载安装"
-    exit 1
-fi
-echo -e "${GREEN}✓ Ollama 已安装${NC}"
+echo -e "${BLUE}[1/3] 检查依赖...${NC}"
 
 # 检查 Docker（ChromaDB 推荐用 Docker）
 if command -v docker &> /dev/null; then
@@ -70,60 +62,10 @@ echo ""
 
 # ── 启动服务 ────────────────────────────────────────────
 
-echo -e "${BLUE}[3/5] 启动 Ollama...${NC}"
-
-# 检查 Ollama 是否已在运行
-if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Ollama 已在运行 (端口 11434)${NC}"
-else
-    echo "   启动 Ollama 服务中..."
-    # macOS: 使用 launchctl 或直接启动
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # 尝试通过标准方式启动
-        ollama serve > /tmp/ollama.log 2>&1 &
-        OLLAMA_PID=$!
-        echo "   PID: $OLLAMA_PID"
-        # 等待服务就绪
-        sleep 5
-        if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ Ollama 已启动${NC}"
-        else
-            echo -e "${RED}✗ Ollama 启动失败，请查看 /tmp/ollama.log${NC}"
-            exit 1
-        fi
-    else
-        ollama serve > /tmp/ollama.log 2>&1 &
-        OLLAMA_PID=$!
-        sleep 5
-        if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ Ollama 已启动${NC}"
-        else
-            echo -e "${RED}✗ Ollama 启动失败${NC}"
-            exit 1
-        fi
-    fi
-fi
-
+echo -e "${BLUE}[2/3] 初始化数据目录...${NC}"
 echo ""
 
-# 检查模型是否已下载
-echo -e "${BLUE}[4/5] 验证模型...${NC}"
-if ollama list | grep -q "qwen2.5:7b"; then
-    echo -e "${GREEN}✓ qwen2.5:7b 已下载${NC}"
-else
-    echo "   正在下载 qwen2.5:7b（约 4.7GB，首次较慢）..."
-    ollama pull qwen2.5:7b
-fi
-
-if ollama list | grep -q "bge-m3"; then
-    echo -e "${GREEN}✓ bge-m3 已下载${NC}"
-else
-    echo "   正在下载 bge-m3（约 1.2GB）..."
-    ollama pull bge-m3
-fi
-
-echo ""
-echo -e "${BLUE}[5/5] 启动 ChromaDB...${NC}"
+echo -e "${BLUE}[3/3] 启动 ChromaDB...${NC}"
 
 if [ "$USE_DOCKER" = true ]; then
     # 检查容器是否已运行
@@ -219,7 +161,6 @@ echo ""
 echo "访问地址："
 echo -e "  前端: ${BLUE}http://localhost:1420${NC}"
 echo -e "  后端 API: ${BLUE}http://localhost:8000${NC}"
-echo -e "  Ollama: ${BLUE}http://localhost:11434${NC}"
 echo -e "  ChromaDB: ${BLUE}http://localhost:8001${NC}"
 echo ""
 echo "按 Ctrl+C 停止所有服务"

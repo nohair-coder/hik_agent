@@ -1,6 +1,6 @@
 /**
  * 工程文档生成助手 — TypeScript 后端入口
- * Hono + LangChain.js + Ollama + ChromaDB
+ * Hono + LangChain.js + ChromaDB
  */
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";

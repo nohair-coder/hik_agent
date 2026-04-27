@@ -30,7 +30,6 @@ make stop           # 停止服务
 |------|------|
 | `start-all.sh` | 一键启动脚本 |
 | `Makefile` | 命令接口（推荐） |
-| `docker-compose.yml` | Docker 容器编排 |
 | `scripts/` | 单独服务脚本 |
 
 ---

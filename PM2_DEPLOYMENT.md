@@ -11,7 +11,7 @@
 在 GitHub 上配置好 Secrets 后，任何 push 到 `main` 分支的代码都会自动触发以下流程：
 
 1. ✅ 检查服务器环境（PM2 是否已安装）
-2. ✅ 如需要，自动初始化服务器（安装 Node.js、Yarn、PM2、Ollama、ChromaDB）
+2. ✅ 如需要，自动初始化服务器（安装 Node.js、Yarn、PM2、ChromaDB）
 3. ✅ 构建后端和前端
 4. ✅ 上传代码和配置文件到服务器
 5. ✅ 使用 PM2 启动服务
@@ -163,8 +163,6 @@ pm2 unstartup
 |------|------|
 | 🖥️ 前端 | http://8.136.151.205:1420 |
 | 🔧 API | http://8.136.151.205:8000 |
-| 🤖 Ollama | http://8.136.151.205:11434 |
-| 📊 ChromaDB | http://8.136.151.205:8001 |
 
 ---
 
@@ -218,7 +216,6 @@ pm2 info hik-backend    # 同上
 ├── frontend.log         # 前端应用日志
 ├── frontend-out.log     # 前端标准输出
 ├── frontend-error.log   # 前端错误日志
-├── ollama.log           # Ollama 日志
 └── chroma.log           # ChromaDB 日志
 ```
 

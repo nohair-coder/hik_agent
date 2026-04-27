@@ -20,13 +20,6 @@ if ! command -v docker &> /dev/null; then
     rm get-docker.sh
 fi
 
-# 安装 Docker Compose
-echo "安装 Docker Compose..."
-if ! command -v docker-compose &> /dev/null; then
-    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
-fi
-
 # 启动 Docker
 echo "启动 Docker..."
 systemctl start docker
@@ -45,11 +38,8 @@ NODE_ENV=production
 PORT=8000
 
 # ChromaDB 配置
-CHROMA_HOST=chroma
-CHROMA_PORT=8000
-
-# Ollama 配置
-OLLAMA_HOST=http://ollama:11434
+CHROMA_HOST=localhost
+CHROMA_PORT=8001
 
 # API 配置
 API_BASE_URL=http://localhost:8000
@@ -60,4 +50,3 @@ fi
 
 echo ""
 echo "✓ 服务器初始化完成！"
-echo "接下来可以运行: docker-compose -f docker-compose.prod.yml up -d"

@@ -39,33 +39,10 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}基础服务检查${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-check_service "Ollama" "http://localhost:11434/api/tags" "11434"
 check_service "ChromaDB" "http://localhost:8001/api/v1/heartbeat" "8001"
 check_service "后端 API" "http://localhost:8000/health" "8000"
 
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "${BLUE}模型检查${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-if command -v ollama &> /dev/null; then
-    echo "已安装的模型:"
-    ollama list 2>/dev/null | tail -n +2 | while read -r line; do
-        if [ -n "$line" ]; then
-            model_name=$(echo "$line" | awk '{print $1}')
-            model_size=$(echo "$line" | awk '{print $3}')
-            
-            if [[ "$model_name" == "qwen"* ]]; then
-                echo -e "  ${GREEN}✓${NC} $model_name ($model_size)"
-            elif [[ "$model_name" == "bge-m3"* ]]; then
-                echo -e "  ${GREEN}✓${NC} $model_name ($model_size)"
-            fi
-        fi
-    done
-else
-    echo -e "${RED}✗ Ollama 未安装${NC}"
-fi
-
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "${BLUE}依赖检查${NC}"
@@ -86,7 +63,6 @@ check_cmd() {
 check_cmd "node" "Node.js"
 check_cmd "yarn" "Yarn"
 check_cmd "docker" "Docker"
-check_cmd "ollama" "Ollama"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -125,7 +101,6 @@ check_port() {
     fi
 }
 
-check_port 11434 "Ollama"
 check_port 8001 "ChromaDB"
 check_port 8000 "后端"
 check_port 1420 "前端"
@@ -140,7 +115,7 @@ if [ "$SERVICES_FAIL" -eq 0 ]; then
     echo -e "${GREEN}✓ 所有基础服务运行正常！${NC}"
     echo -e "  访问地址: ${BLUE}http://localhost:1420${NC}"
 else
-    echo -e "${YELLOW}⚠ 部分服务未启动 ($SERVICES_FAIL/3)${NC}"
+    echo -e "${YELLOW}⚠ 部分服务未启动 ($SERVICES_FAIL/2)${NC}"
     echo ""
     echo "快速启动所有服务:"
     echo -e "  ${BLUE}make start${NC}"

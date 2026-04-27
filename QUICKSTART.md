@@ -19,7 +19,6 @@ make clean                  # 清理临时文件
 make install           # 安装依赖
 make start             # 快速启动（推荐）
 make start-all         # 完整启动脚本
-make start-ollama      # 仅启动 Ollama
 make start-chroma      # 仅启动 ChromaDB  
 make start-backend     # 仅启动后端
 make start-frontend    # 仅启动前端
@@ -37,15 +36,12 @@ bash start-all.sh
 **或在不同终端运行各个服务：**
 ```bash
 # 终端 1
-bash scripts/start-ollama.sh
-
-# 终端 2
 bash scripts/start-chroma.sh
 
-# 终端 3
+# 终端 2
 bash scripts/start-backend.sh
 
-# 终端 4
+# 终端 3
 bash scripts/start-frontend.sh
 ```
 
@@ -54,33 +50,13 @@ bash scripts/start-frontend.sh
 ### 方式 3️⃣：手动启动
 
 ```bash
-# 终端 1: Ollama
-ollama serve
-
-# 终端 2: ChromaDB
+# 终端 1: ChromaDB
 docker run -p 8001:8000 -v $(pwd)/data/chroma_db:/chroma/chroma chromadb/chroma
 
-# 终端 3: 后端
+# 终端 2: 后端
 cd backend && yarn start
 
-# 终端 4: 前端
-cd frontend && yarn dev
-```
-
----
-
-### 方式 4️⃣：Docker Compose
-
-```bash
-docker-compose up -d     # 启动 Ollama 和 ChromaDB
-docker-compose ps        # 查看运行状态
-docker-compose logs -f   # 查看日志
-docker-compose down      # 停止服务
-```
-
-然后启动应用：
-```bash
-cd backend && yarn start
+# 终端 3: 前端
 cd frontend && yarn dev
 ```
 
@@ -95,7 +71,6 @@ cd frontend && yarn dev
 | 前端界面 | http://localhost:1420 | React + Vite 应用 |
 | 后端 API | http://localhost:8000 | Hono 服务器 |
 | 健康检查 | http://localhost:8000/health | 后端健康状态 |
-| Ollama | http://localhost:11434 | LLM 服务 |
 | ChromaDB | http://localhost:8001 | 向量数据库 |
 
 ---
@@ -120,7 +95,6 @@ bash scripts/check-status.sh
 make logs                  # 查看所有服务日志
 
 # 或单独查看
-tail -f /tmp/ollama.log    # Ollama 日志
 tail -f /tmp/chroma.log    # ChromaDB 日志
 tail -f /tmp/backend.log   # 后端日志
 tail -f /tmp/frontend.log  # 前端日志
@@ -130,7 +104,6 @@ tail -f /tmp/frontend.log  # 前端日志
 
 ```bash
 # 测试各服务的连通性
-curl http://localhost:11434/api/tags      # Ollama
 curl http://localhost:8001/api/v1/heartbeat  # ChromaDB
 curl http://localhost:8000/health         # 后端
 ```
@@ -138,17 +111,6 @@ curl http://localhost:8000/health         # 后端
 ---
 
 ## 故障排查
-
-### ❌ Ollama 启动失败
-
-**问题：** `ollama serve: command not found`
-
-**解决方案：**
-1. 检查 Ollama 是否安装：`ollama version`
-2. 未安装请访问 https://ollama.ai 下载
-3. macOS 用户可以直接打开应用：`open -a Ollama`
-
----
 
 ### ❌ ChromaDB 连接失败
 
@@ -167,16 +129,11 @@ curl http://localhost:8000/health         # 后端
 
 ### ❌ 后端模型预热失败
 
-**问题：** `LLM 预热失败（请确认 Ollama 已启动）`
+**问题：** `LLM 预热失败`
 
 **解决方案：**
-1. 确保 Ollama 已启动：`curl http://localhost:11434/api/tags`
-2. 检查模型是否下载：`ollama list`
-3. 如果模型缺失，下载：
-   ```bash
-   ollama pull qwen2.5:7b
-   ollama pull bge-m3
-   ```
+1. 检查后端服务是否正常运行：`curl http://localhost:8000/health`
+2. 查看后端日志：`tail -f /tmp/backend.log`
 
 ---
 
@@ -187,7 +144,6 @@ curl http://localhost:8000/health         # 后端
 # macOS/Linux
 lsof -i :1420    # 前端
 lsof -i :8000    # 后端
-lsof -i :11434   # Ollama
 lsof -i :8001    # ChromaDB
 
 # 杀死进程（替换 PID）
@@ -196,34 +152,9 @@ kill -9 <PID>
 
 ---
 
-### ❌ 模型未下载
-
-**原因：** Ollama 服务未启动或模型未下载
-
-**解决方案：**
-```bash
-# 1. 启动 Ollama
-ollama serve
-
-# 2. 在另一个终端中下载模型
-ollama pull qwen2.5:7b
-ollama pull bge-m3
-
-# 3. 验证模型
-ollama list
-
-# 4. 重启后端
-make start-backend
-```
-
----
-
 ## 性能建议
 
-- **首次启动较慢**：Ollama 和 bge-m3 首次加载需要 30-60 秒
-- **模型下载**：qwen2.5:7b（4.7GB）和 bge-m3（1.2GB），总计 6GB
 - **内存需求**：最低 8GB RAM，推荐 16GB（考虑 OS 开销）
-- **GPU 加速**：无独显时 CPU 推理约 10-30 tokens/秒
 
 ---
 

@@ -1,23 +1,32 @@
 /**
  * Embedding 模型与 ChromaDB 向量库单例
  *
- * 通过 Ollama 运行 bge-m3，与 Python 版本保持模型一致性。
+ * 使用 OpenAI 兼容 Embedding API，支持 OpenAI / 阿里云 / 任意兼容接口。
  * 双 Collection 策略：技术知识库 + 风格样本库。
  */
-import { OllamaEmbeddings } from "@langchain/ollama";
+import { OpenAIEmbeddings } from "@langchain/openai";
 import { Chroma } from "@langchain/community/vectorstores/chroma";
 import { config } from "../config.js";
 
 // ── Embedding 单例 ──────────────────────────────────────────────
 
-let _embeddings: OllamaEmbeddings | null = null;
+let _embeddings: OpenAIEmbeddings | null = null;
 
-export const getEmbeddings = (): OllamaEmbeddings => {
+export const getEmbeddings = (): OpenAIEmbeddings => {
   if (!_embeddings) {
-    _embeddings = new OllamaEmbeddings({
-      model: config.embeddingModel, // bge-m3
-      baseUrl: config.ollamaBaseUrl,
+    const apiKey = config.embeddingApiKey || config.apiKey;
+    if (!apiKey) {
+      throw new Error("必须设置 EMBEDDING_API_KEY 或 API_KEY 环境变量");
+    }
+    const baseURL = config.embeddingApiBaseUrl || config.apiBaseUrl;
+    _embeddings = new OpenAIEmbeddings({
+      model: config.embeddingModel,
+      apiKey,
+      configuration: { baseURL },
     });
+    console.log(
+      `✓ Embedding 已初始化 | 模型: ${config.embeddingModel} | BaseURL: ${baseURL}`,
+    );
   }
   return _embeddings;
 };
@@ -36,7 +45,6 @@ const getOrCreate = async (collectionName: string): Promise<Chroma> => {
       collectionMetadata: { "hnsw:space": "cosine" },
     });
   } catch {
-    // Collection 不存在（首次运行）— 用空文档列表创建
     return Chroma.fromDocuments([], getEmbeddings(), {
       collectionName,
       url: config.chromaUrl,

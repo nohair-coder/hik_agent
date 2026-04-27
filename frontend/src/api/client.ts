@@ -3,7 +3,7 @@
  * 封装 SSE 流式请求和常规 HTTP 请求
  */
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "http://8.136.151.205:8000";
 
 export interface GenerateRequest {
   question: string;
@@ -152,14 +152,19 @@ export async function deleteDocument(
 
 // ── 健康检查 ──
 
-export async function checkHealth(): Promise<boolean> {
+export interface HealthResult {
+  online: boolean;
+  model?: string;
+}
+
+export async function checkHealth(): Promise<HealthResult> {
   try {
     const response = await fetch(`${BASE_URL}/health`, {
       signal: AbortSignal.timeout(3000),
     });
     const data = await response.json();
-    return data.status === "ok";
+    return { online: data.status === "ok", model: data.model };
   } catch {
-    return false;
+    return { online: false };
   }
 }

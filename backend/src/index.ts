@@ -23,7 +23,7 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:1420", "tauri://localhost", "https://tauri.localhost"],
+    origin: ["http://localhost:1420", "tauri://localhost", "https://tauri.localhost", "http://8.136.151.205"],
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type"],
   })
@@ -51,7 +51,11 @@ app.get("/health", async (c) => {
 // ── 启动 ────────────────────────────────────────────────────────
 
 console.log("正在预热模型...");
-await warmup();
+try {
+  await warmup();
+} catch (e) {
+  console.warn("⚠ 预热失败，服务仍将启动:", (e as Error).message);
+}
 
 serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.log(`✓ 服务已启动: http://localhost:${info.port}`);

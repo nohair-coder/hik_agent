@@ -12,13 +12,30 @@ const resolveStore = async (key: CollectionKey) => {
   return key === "engineering" ? getTechStore() : getStyleStore();
 };
 
+/** 获取 ChromaDB 原生 collection 对象（兼容新旧版本） */
+const getCollection = async (store: any) => {
+  // 新版 LangChain：需要调用 ensureCollection() 初始化
+  if (typeof store.ensureCollection === "function") {
+    return store.ensureCollection();
+  }
+  // 旧版：collection 已在构造时挂载
+  if (store.collection) {
+    return store.collection;
+  }
+  throw new Error("无法获取 ChromaDB collection 对象");
+};
+
 /** GET /api/collections/stats — 两个库的块数统计 */
 collectionsRouter.get("/stats", async (c) => {
   try {
     const [tech, style] = await Promise.all([getTechStore(), getStyleStore()]);
+    const [techCol, styleCol] = await Promise.all([
+      getCollection(tech),
+      getCollection(style),
+    ]);
     const [techCount, styleCount] = await Promise.all([
-      (tech as any).collection?.count() ?? 0,
-      (style as any).collection?.count() ?? 0,
+      techCol.count(),
+      styleCol.count(),
     ]);
 
     return c.json({
@@ -47,7 +64,7 @@ collectionsRouter.get("/:collection/documents", async (c) => {
 
   try {
     const store = await resolveStore(key);
-    const col = (store as any).collection;
+    const col = await getCollection(store);
     const result = await col.get({ include: [IncludeEnum.metadatas] });
     const metadatas: Record<string, unknown>[] = result.metadatas ?? [];
 
@@ -97,7 +114,7 @@ collectionsRouter.delete("/:collection/documents/:sourceFile", async (c) => {
 
   try {
     const store = await resolveStore(key);
-    const col = (store as any).collection;
+    const col = await getCollection(store);
 
     const result = await col.get({
       where: { source_file: sourceFile },

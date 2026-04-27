@@ -53,7 +53,7 @@ cd ../frontend && yarn build
 # 上传到服务器
 sshpass -p "Wangxuezhishi32!" scp -r backend/dist root@8.136.151.205:/opt/hik-agent/backend/
 sshpass -p "Wangxuezhishi32!" scp -r frontend/dist root@8.136.151.205:/opt/hik-agent/frontend/
-sshpass -p "Wangxuezhishi32!" scp ecosystem.config.js root@8.136.151.205:/opt/hik-agent/
+sshpass -p "Wangxuezhishi32!" scp ecosystem.config.cjs root@8.136.151.205:/opt/hik-agent/
 ```
 
 ### 第三步：启动服务
@@ -63,7 +63,7 @@ sshpass -p "Wangxuezhishi32!" ssh root@8.136.151.205 << 'EOF'
 cd /opt/hik-agent
 pm2 stop all 2>/dev/null || true
 pm2 delete all 2>/dev/null || true
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 pm2 save
 pm2 list
 EOF
@@ -73,7 +73,7 @@ EOF
 
 ## PM2 配置说明
 
-`ecosystem.config.js` 文件配置了两个应用：
+`ecosystem.config.cjs` 文件配置了两个应用：
 
 ### 后端应用（hik-backend）
 
@@ -115,7 +115,7 @@ EOF
 
 ```bash
 # 启动应用
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 # 停止应用
 pm2 stop all              # 停止所有
@@ -180,14 +180,14 @@ pm2 list
 # 如果日志显示错误，可能是：
 # 1. 依赖未安装：cd /opt/hik-agent/backend && yarn install
 # 2. 端口已被占用：lsof -i :8000
-# 3. 环境变量错误：检查 ecosystem.config.js
+# 3. 环境变量错误：检查 ecosystem.config.cjs
 ```
 
 ### 内存持续增长
 
 如果应用内存持续增长：
 
-1. 在 `ecosystem.config.js` 中设置 `max_memory_restart`
+1. 在 `ecosystem.config.cjs` 中设置 `max_memory_restart`
 2. 或定期重启应用：
 
 ```bash
@@ -288,7 +288,7 @@ pm2 restart hik-frontend
 find /var/log/hik -type f -mtime +7 -delete
 
 # 或者限制日志大小
-pm2 start ecosystem.config.js --max-log-size 10M
+pm2 start ecosystem.config.cjs --max-log-size 10M
 ```
 
 5. **更新 PM2**：

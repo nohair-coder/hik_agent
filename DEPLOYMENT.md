@@ -77,7 +77,7 @@ sshpass -p "Wangxuezhishi32!" ssh root@8.136.151.205 'bash -s' < scripts/init-se
 ### `.github/workflows/deploy.yml`
 GitHub Actions 工作流配置，定义了完整的 CI/CD 流程（构建、初始化、部署）。
 
-### `ecosystem.config.js`
+### `ecosystem.config.cjs`
 PM2 进程管理配置，定义了后端和前端应用的启动参数和日志位置。
 
 ### `scripts/init-server-pm2.sh`
@@ -104,7 +104,7 @@ sshpass -p "Wangxuezhishi32!" scp -r backend/dist root@8.136.151.205:/opt/hik-ag
 sshpass -p "Wangxuezhishi32!" scp -r frontend/dist root@8.136.151.205:/opt/hik-agent/frontend/
 
 # 上传 PM2 配置
-sshpass -p "Wangxuezhishi32!" scp ecosystem.config.js root@8.136.151.205:/opt/hik-agent/
+sshpass -p "Wangxuezhishi32!" scp ecosystem.config.cjs root@8.136.151.205:/opt/hik-agent/
 ```
 
 ### 第三步：重启服务
@@ -181,7 +181,7 @@ curl http://localhost:1420               # 前端
 
 ### 后端环境变量
 
-在 `backend/.env` 或 `ecosystem.config.js` 中配置：
+在 `backend/.env` 或 `ecosystem.config.cjs` 中配置：
 
 ```env
 NODE_ENV=production

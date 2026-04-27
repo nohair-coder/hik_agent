@@ -88,7 +88,7 @@ jobs:
           
           echo "📤 上传 PM2 配置..."
           sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ecosystem.config.js "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/"
+            ecosystem.config.cjs "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/"
           
           # 在远程服务器启动服务
           echo "🔄 启动服务..."
@@ -109,7 +109,7 @@ jobs:
           
           # 启动新的进程
           echo "🚀 启动新的进程..."
-          pm2 start ecosystem.config.js
+          pm2 start ecosystem.config.cjs
           
           # 保存配置
           pm2 save

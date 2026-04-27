@@ -6,13 +6,14 @@ import GenerateForm, {
 import DocumentEditor from "./components/DocumentEditor";
 import FileUpload from "./components/FileUpload";
 import DocLibrary, { type DocLibraryRef } from "./components/DocLibrary";
-import { streamGenerate, checkHealth } from "./api/client";
+import { streamGenerate, checkHealth, type HealthResult } from "./api/client";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
 const App: React.FC = () => {
   const [backendOnline, setBackendOnline] = useState(false);
+  const [modelName, setModelName] = useState<string | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
   const [content, setContent] = useState("");
   const [docType, setDocType] = useState("文档预览");
@@ -20,7 +21,9 @@ const App: React.FC = () => {
 
   // 健康检查轮询
   const pollHealth = useCallback(async () => {
-    setBackendOnline(await checkHealth());
+    const result = await checkHealth();
+    setBackendOnline(result.online);
+    if (result.model) setModelName(result.model);
   }, []);
 
   useEffect(() => {
@@ -90,7 +93,7 @@ const App: React.FC = () => {
           />
         </div>
         <Text style={{ color: "#8c8c8c", fontSize: 12 }}>
-          本地离线 · Qwen2.5-7B · RAG
+          {modelName ? `${modelName} · RAG` : "本地离线 · RAG"}
         </Text>
       </Header>
 

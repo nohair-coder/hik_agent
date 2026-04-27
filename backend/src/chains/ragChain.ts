@@ -2,13 +2,12 @@
  * RAG 生成链 — LangChain.js LCEL
  *
  * 双路检索（技术知识库 + 风格样本库）并行注入 Prompt，
- * 通过 Qwen2.5-7B 本地模型流式生成文档。
+ * 通过 OpenAI 兼容 API（DeepSeek / Qwen / OpenAI 等）流式生成文档。
  */
-import { ChatOllama } from "@langchain/ollama";
+import { ChatOpenAI } from "@langchain/openai";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import {
-  RunnablePassthrough,
   RunnableSequence,
   RunnableParallel,
 } from "@langchain/core/runnables";
@@ -20,21 +19,33 @@ import { config } from "../config.js";
 
 // ── LLM 单例 ────────────────────────────────────────────────────
 
-let _llm: ChatOllama | null = null;
+let _llm: ChatOpenAI | null = null;
 
-export const getLlm = (): ChatOllama => {
+export const getLlm = (): ChatOpenAI => {
   if (!_llm) {
-    _llm = new ChatOllama({
+    if (!config.apiKey) {
+      throw new Error("必须设置 API_KEY 环境变量");
+    }
+    _llm = new ChatOpenAI({
       model: config.modelName,
-      baseUrl: config.ollamaBaseUrl,
+      apiKey: config.apiKey,
+      configuration: {
+        baseURL: config.apiBaseUrl,
+      },
       temperature: config.temperature,
-      numCtx: config.numCtx,
-      numPredict: 4096,
-      topP: 0.9,
-      repeatPenalty: 1.1,
+      maxTokens: config.maxTokens,
+      streaming: true,
     });
+    console.log(
+      `✓ LLM 已初始化 | 模型: ${config.modelName} | BaseURL: ${config.apiBaseUrl}`,
+    );
   }
   return _llm;
+};
+
+/** 重置 LLM 单例（配置变更后调用）*/
+export const resetLlm = (): void => {
+  _llm = null;
 };
 
 // ── 文档格式化 ──────────────────────────────────────────────────
@@ -51,7 +62,7 @@ const formatDocs = (docs: Document[]): string => {
 
 // ── 链构造 ──────────────────────────────────────────────────────
 
-// 生成锁：Ollama 同一时间只处理一个请求
+// 生成锁：同一时间只处理一个请求
 let _generating = false;
 
 export interface GenerateInput {
@@ -142,16 +153,13 @@ export const generateOnce = async (input: GenerateInput): Promise<string> => {
   return parts.join("");
 };
 
-/** 预热：验证 Ollama 连接与 Embedding 模型 */
+/** 预热：验证 LLM 连接与 Embedding 模型 */
 export const warmup = async (): Promise<void> => {
   try {
     await getLlm().invoke([{ role: "user", content: "ping" }]);
     console.log("✓ LLM 连接正常");
   } catch (e) {
-    console.warn(
-      "⚠ LLM 预热失败（请确认 Ollama 已启动）:",
-      (e as Error).message,
-    );
+    console.warn("⚠ LLM 预热失败:", (e as Error).message);
   }
 
   try {

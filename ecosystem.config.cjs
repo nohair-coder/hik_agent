@@ -20,8 +20,7 @@ module.exports = {
     },
     {
       name: 'hik-frontend',
-      script: './node_modules/.bin/vite',
-      args: 'preview --port 1420',
+      script: 'server.js',
       cwd: './frontend',
       instances: 1,
       exec_mode: 'fork',
@@ -29,6 +28,7 @@ module.exports = {
       watch: false,
       env: {
         NODE_ENV: 'production',
+        PORT: 1420,
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',

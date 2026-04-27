@@ -1,0 +1,108 @@
+name: Deploy to Aliyun
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd backend && yarn install
+          cd ../frontend && yarn install
+
+      - name: Build backend
+        run: |
+          cd backend && yarn build
+
+      - name: Build frontend
+        run: |
+          cd frontend && yarn build
+
+      - name: Deploy to Aliyun server
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
+          ALIYUN_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+        run: |
+          mkdir -p ~/.ssh
+          # 创建部署脚本
+          cat > deploy.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          # 阿里云服务器信息
+          SERVER_IP=$1
+          SERVER_USER=$2
+          SERVER_PASSWORD=$3
+          
+          # 远程部署目录
+          REMOTE_DIR="/opt/hik-agent"
+          
+          echo "开始部署到 $SERVER_IP..."
+          
+          # 使用 sshpass 通过密码登录
+          export SSHPASS="$SERVER_PASSWORD"
+          
+          # 创建远程目录
+          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            "$SERVER_USER@$SERVER_IP" "mkdir -p $REMOTE_DIR"
+          
+          # 上传代码
+          echo "上传代码..."
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -r backend/dist "$SERVER_USER@$SERVER_IP:$REMOTE_DIR/"
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -r frontend/dist "$SERVER_USER@$SERVER_IP:$REMOTE_DIR/"
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            docker-compose.yml "$SERVER_USER@$SERVER_IP:$REMOTE_DIR/"
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            backend/package.json "$SERVER_USER@$SERVER_IP:$REMOTE_DIR/"
+          
+          # 在远程服务器运行启动命令
+          echo "启动服务..."
+          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            "$SERVER_USER@$SERVER_IP" << 'DEPLOY_CMD'
+          set -e
+          cd /opt/hik-agent
+          
+          # 停止旧的容器
+          docker-compose down 2>/dev/null || true
+          
+          # 启动新的容器
+          docker-compose up -d
+          
+          # 验证服务
+          sleep 3
+          if curl -f http://localhost:8000/api/health 2>/dev/null; then
+            echo "✓ 后端服务已启动"
+          fi
+          
+          if curl -f http://localhost:1420 2>/dev/null; then
+            echo "✓ 前端服务已启动"
+          fi
+          
+          echo "✓ 部署完成！"
+          DEPLOY_CMD
+          
+          echo "✓ 部署成功！"
+          EOF
+          
+          chmod +x deploy.sh
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Run deployment
+        run: ./deploy.sh "$ALIYUN_HOST" "$ALIYUN_USER" "$ALIYUN_PASSWORD"

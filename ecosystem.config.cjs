@@ -20,7 +20,8 @@ module.exports = {
     },
     {
       name: 'hik-frontend',
-      script: 'start.sh',
+      script: '/usr/bin/env',
+      args: 'yarn preview --port 1420',
       cwd: '/opt/hik-agent/frontend',
       instances: 1,
       exec_mode: 'fork',

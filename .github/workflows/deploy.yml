@@ -109,6 +109,9 @@ jobs:
           
           # 启动新的进程
           echo "🚀 启动新的进程..."
+          echo "📄 检查配置文件内容..."
+          cat ecosystem.config.cjs
+          echo "---"
           pm2 start ecosystem.config.cjs
           
           # 保存配置

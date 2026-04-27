@@ -20,7 +20,7 @@ module.exports = {
     },
     {
       name: 'hik-frontend',
-      script: './frontend/node_modules/.bin/vite',
+      script: './node_modules/.bin/vite',
       args: 'preview --port 1420',
       cwd: './frontend',
       instances: 1,

@@ -31,7 +31,7 @@ module.exports = {
     },
     {
       name: 'hik-agent-frontend',
-      script: './node_modules/.bin/serve',
+      script: './frontend/node_modules/.bin/serve',
       args: '-s frontend/dist -l 3000 --single',
       cwd: '/opt/hik-agent',
       instances: 1,

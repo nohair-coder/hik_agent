@@ -44,7 +44,8 @@ app.get("/health", async (c) => {
     await getLlm().invoke([{ role: "user", content: "ping" }]);
     return c.json({ status: "ok", model: config.modelName });
   } catch (err) {
-    return c.json({ status: "error", error: (err as Error).message }, 503);
+    // 即使 LLM 调用失败，也返回 model 名称，便于前端展示
+    return c.json({ status: "error", model: config.modelName, error: (err as Error).message }, 503);
   }
 });
 

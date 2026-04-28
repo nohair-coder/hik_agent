@@ -8,12 +8,8 @@ import {
   Paragraph,
   TextRun,
   HeadingLevel,
-  AlignmentType,
   convertInchesToTwip,
 } from "docx";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { config } from "../config.js";
 
 // ── Markdown 解析 ───────────────────────────────────────────────
 
@@ -164,27 +160,6 @@ const markdownToDocx = (content: string): Document => {
 };
 
 // ── 公开接口 ────────────────────────────────────────────────────
-
-export interface ExportResult {
-  filePath: string;
-  filename: string;
-}
-
-export const exportToWord = async (
-  content: string,
-  basename: string,
-): Promise<ExportResult> => {
-  const doc = markdownToDocx(content);
-  const buffer = await Packer.toBuffer(doc);
-
-  const timestamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-  const safe = basename.replace(/[\\/:*?"<>|]/g, "_");
-  const filename = `${safe}_${timestamp}.docx`;
-  const filePath = join(config.exportDir, filename);
-
-  await writeFile(filePath, buffer);
-  return { filePath, filename };
-};
 
 /** 直接返回 Buffer，用于 HTTP 流式响应 */
 export const exportToBuffer = async (content: string): Promise<Buffer> => {

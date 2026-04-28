@@ -93,7 +93,7 @@ const App: React.FC = () => {
           />
         </div>
         <Text style={{ color: "#8c8c8c", fontSize: 12 }}>
-          {modelName ? `${modelName} · RAG` : "本地离线 · RAG"}
+          {modelName ? `${modelName} · RAG` : "加载中… · RAG"}
         </Text>
       </Header>
 

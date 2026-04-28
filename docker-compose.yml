@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # ChromaDB - 向量数据库
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: hik-agent-chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - CHROMA_HOST_TYPE=rest
+
+volumes:
+  chroma-data:
+    driver: local
+
+# 使用说明：
+#
+# 1. 启动 ChromaDB：
+#    docker-compose up -d
+#
+# 2. 查看日志：
+#    docker-compose logs -f chroma
+#
+# 3. 停止服务：
+#    docker-compose down
+#
+# 4. 清理数据卷：
+#    docker-compose down -v

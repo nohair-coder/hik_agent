@@ -46,9 +46,6 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '512M',
-      // Health check
-      listen_timeout: 3000,
-      kill_timeout: 5000,
       // Restart policy
       min_uptime: '10s',
       max_restarts: 15,

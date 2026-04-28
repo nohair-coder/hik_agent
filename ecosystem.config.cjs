@@ -5,10 +5,11 @@ module.exports = {
       script: './backend/dist/index.js',
       cwd: '/opt/hik-agent',
       instances: 1,
-      exec_mode: 'cluster',
+      exec_mode: 'fork', // Changed from cluster - cluster mode with 1 instance is redundant
       env: {
         NODE_ENV: 'production',
-        PORT: 3001
+        PORT: 3001,
+        LOG_LEVEL: 'info'
       },
       error_file: '/var/log/hik/backend-error.log',
       out_file: '/var/log/hik/backend-out.log',
@@ -16,12 +17,22 @@ module.exports = {
       merge_logs: true,
       autorestart: true,
       watch: false,
-      max_memory_restart: '1G'
+      max_memory_restart: '1G',
+      // Health check configuration
+      listen_timeout: 5000,
+      kill_timeout: 10000,
+      wait_ready: true,
+      // Graceful reload
+      min_uptime: '10s',
+      max_restarts: 15,
+      restart_delay: 4000,
+      // Monitoring
+      instance_var: 'INSTANCE_ID'
     },
     {
       name: 'hik-agent-frontend',
-      script: 'npx',
-      args: 'serve -s frontend/dist -l 3000',
+      script: './node_modules/.bin/serve',
+      args: '-s frontend/dist -l 3000 --single',
       cwd: '/opt/hik-agent',
       instances: 1,
       exec_mode: 'fork',
@@ -34,7 +45,18 @@ module.exports = {
       merge_logs: true,
       autorestart: true,
       watch: false,
-      max_memory_restart: '512M'
+      max_memory_restart: '512M',
+      // Health check
+      listen_timeout: 3000,
+      kill_timeout: 5000,
+      // Restart policy
+      min_uptime: '10s',
+      max_restarts: 15,
+      restart_delay: 4000
     }
-  ]
+  ],
+  // Global error handler
+  error_file: '/var/log/hik/pm2-error.log',
+  out_file: '/var/log/hik/pm2-out.log',
+  log_file: '/var/log/hik/pm2-combined.log'
 };

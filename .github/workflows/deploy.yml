@@ -82,9 +82,19 @@ jobs:
           sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             backend/package.json "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/backend/"
           
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            backend/yarn.lock "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/backend/"
+          
           echo "📤 上传前端文件..."
           sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
             -r frontend/dist "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/"
+          
+          echo "📤 上传前端配置..."
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            frontend/package.json "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/frontend/"
+          
+          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            frontend/yarn.lock "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/frontend/"
           
           echo "📤 上传 PM2 配置..."
           sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
@@ -106,6 +116,10 @@ jobs:
           
           # 创建日志目录
           mkdir -p /var/log/hik
+          
+          # 安装前端依赖
+          echo "📦 安装前端依赖..."
+          cd frontend && yarn install --production --frozen-lockfile && cd ..
           
           # 启动新的进程
           echo "🚀 启动新的进程..."

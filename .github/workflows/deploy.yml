@@ -46,9 +46,17 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          cat > ~/.ssh/deploy_key << 'SSHKEY'
+${{ secrets.SSH_PRIVATE_KEY }}
+SSHKEY
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          
+      - name: Verify SSH key
+        run: ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null 2>&1 && echo "✓ SSH key valid" || echo "✗ SSH key invalid"
+          
+      - name: Test SSH connection
+        run: ssh -i ~/.ssh/deploy_key -o ConnectTimeout=5 -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "echo 'SSH connection successful'"
 
       # ── 上传文件 ─────────────────────────────────────────────────
       - name: Upload artifacts to server

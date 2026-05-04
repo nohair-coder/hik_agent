@@ -3,7 +3,8 @@
  * 封装 SSE 流式请求和常规 HTTP 请求
  */
 
-const BASE_URL = "http://8.136.151.205:8000";
+// 生产环境通过 nginx 代理，使用相对路径；开发环境指向本地后端
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export interface GenerateRequest {
   question: string;

@@ -8,153 +8,92 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
+      # ── 构建前端 ────────────────────────────────────────────────
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        run: |
-          cd backend && yarn install
-          cd ../frontend && yarn install
-
-      - name: Build backend
-        run: |
-          cd backend && yarn build
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
 
       - name: Build frontend
-        run: |
-          cd frontend && yarn build
+        run: npm run build
+        working-directory: frontend
 
-      - name: Install sshpass
-        run: sudo apt-get update && sudo apt-get install -y sshpass
-
-      - name: Initialize server (first run)
-        env:
-          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
-          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
-          ALIYUN_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+      # ── 打包产物 ────────────────────────────────────────────────
+      - name: Package artifacts
         run: |
-          export SSHPASS="$ALIYUN_PASSWORD"
-          
-          echo "🔍 检查服务器环境..."
-          # 检查是否需要初始化（node 和 pm2 是否已安装）
-          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            "$ALIYUN_USER@$ALIYUN_HOST" "command -v pm2 >/dev/null 2>&1" || {
-            echo "⚠️  服务器需要初始化..."
-            
-            # 上传初始化脚本
-            sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-              scripts/init-server-pm2.sh "$ALIYUN_USER@$ALIYUN_HOST:/tmp/init-server.sh"
-            
-            # 运行初始化脚本
-            sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-              "$ALIYUN_USER@$ALIYUN_HOST" "bash /tmp/init-server.sh"
-          }
+          # 前端构建产物
+          tar -czf /tmp/frontend-dist.tar.gz -C frontend dist
 
-      - name: Deploy to Aliyun server
-        env:
-          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
-          ALIYUN_USER: ${{ secrets.ALIYUN_USER }}
-          ALIYUN_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+          # 后端源码（排除 node_modules / dist）
+          tar -czf /tmp/backend-src.tar.gz \
+            --exclude='backend/node_modules' \
+            --exclude='backend/dist' \
+            backend ecosystem.config.cjs
+
+      # ── 配置 SSH ─────────────────────────────────────────────────
+      - name: Setup SSH
         run: |
-          export SSHPASS="$ALIYUN_PASSWORD"
-          
-          REMOTE_DIR="/opt/hik-agent"
-          
-          echo "🚀 开始部署到 $ALIYUN_HOST..."
-          
-          # 创建远程目录
-          echo "📁 创建远程目录..."
-          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            "$ALIYUN_USER@$ALIYUN_HOST" "mkdir -p $REMOTE_DIR/backend $REMOTE_DIR/frontend && chmod -R 755 $REMOTE_DIR"
-          
-          # 上传代码
-          echo "📤 上传后端文件..."
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -r backend/dist "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/"
-          
-          echo "📤 上传后端配置..."
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            backend/package.json "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/backend/"
-          
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            backend/yarn.lock "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/backend/"
-          
-          echo "📤 上传前端文件..."
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -r frontend/dist "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/"
-          
-          echo "📤 上传前端配置..."
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            frontend/package.json "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/frontend/"
-          
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            frontend/yarn.lock "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/frontend/"
-          
-          echo "📤 上传 PM2 配置..."
-          sshpass -e scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            ecosystem.config.cjs "$ALIYUN_USER@$ALIYUN_HOST:$REMOTE_DIR/"
-          
-          # 在远程服务器启动服务
-          echo "🔄 启动服务..."
-          sshpass -e ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            "$ALIYUN_USER@$ALIYUN_HOST" << 'DEPLOY_CMD'
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      # ── 上传文件 ─────────────────────────────────────────────────
+      - name: Upload artifacts to server
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            /tmp/frontend-dist.tar.gz \
+            /tmp/backend-src.tar.gz \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/
+
+      # ── 远程部署 ─────────────────────────────────────────────────
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           set -e
+
+          echo "=== [1/5] 解压前端产物 ==="
+          tar -xzf /tmp/frontend-dist.tar.gz -C /opt/hik-agent/
+          rm -f /tmp/frontend-dist.tar.gz
+
+          echo "=== [2/5] 解压后端源码 ==="
+          tar -xzf /tmp/backend-src.tar.gz -C /opt/hik-agent/
+          rm -f /tmp/backend-src.tar.gz
+
+          echo "=== [3/5] 安装后端依赖并构建 ==="
+          cd /opt/hik-agent/backend
+          npm install --prefer-offline
+          npm run build
+
+          echo "=== [4/5] 重启后端服务 ==="
           cd /opt/hik-agent
-          
-          echo "✓ 已连接到服务器"
-          
-          # 停止旧的进程
-          echo "⛔ 停止旧的进程..."
-          pm2 stop all 2>/dev/null || true
-          pm2 delete all 2>/dev/null || true
-          
-          # 创建日志目录
-          mkdir -p /var/log/hik
-          
-          # 安装前端依赖
-          echo "📦 安装前端依赖..."
-          cd frontend && yarn install --production --frozen-lockfile && cd ..
-          
-          # 启动新的进程
-          echo "🚀 启动新的进程..."
-          echo "📄 检查配置文件内容..."
-          cat ecosystem.config.cjs
-          echo "---"
-          pm2 start ecosystem.config.cjs
-          
-          # 保存配置
+          pm2 delete hik-agent-backend 2>/dev/null || true
+          pm2 start ecosystem.config.cjs --only hik-agent-backend
           pm2 save
-          
-          # 等待服务就绪
-          sleep 3
-          
-          # 验证服务
-          echo "🔍 验证服务状态..."
-          pm2 list
-          
-          # 检查后端
-          if curl -s http://localhost:3001/ >/dev/null; then
-              echo "✅ 后端服务正常"
+
+          echo "=== [5/5] 健康检查 ==="
+          sleep 5
+          STATUS=$(curl -s http://localhost:3001/health | python3 -c "import sys,json; print(json.load(sys.stdin).get('status','unknown'))" 2>/dev/null || echo "unreachable")
+          if [ "$STATUS" = "ok" ]; then
+            echo "✓ 后端健康检查通过 (model: $(curl -s http://localhost:3001/health | python3 -c "import sys,json; print(json.load(sys.stdin).get('model',''))" 2>/dev/null))"
           else
-              echo "⚠️  后端服务未响应，检查日志:"
-              pm2 logs hik-agent-backend --lines 20
+            echo "✗ 后端健康检查失败，状态: $STATUS"
+            pm2 logs hik-agent-backend --lines 30 --nostream
+            exit 1
           fi
-          
-          # 检查前端
-          if curl -s http://localhost:3000/ >/dev/null; then
-              echo "✅ 前端服务正常"
-          else
-              echo "⚠️  前端服务未响应，检查日志:"
-              pm2 logs hik-agent-frontend --lines 20
-          fi
-          
-          echo "✅ 部署完成！"
-          DEPLOY_CMD
-          
-          echo "✅ 部署成功！"
+
+          echo "✓ 部署完成"
+          EOF

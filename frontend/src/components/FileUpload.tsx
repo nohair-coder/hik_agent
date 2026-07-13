@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Upload, Radio, Tag, message, List, Spin } from "antd";
+import { Upload, Radio, Tag, message, List, Spin, Progress } from "antd";
 import {
   InboxOutlined,
   LoadingOutlined,
@@ -19,7 +19,9 @@ type Category = "engineering" | "style";
 
 interface QueueItem {
   name: string;
+  size: number;
   status: "uploading" | "done" | "error";
+  percent: number;
   newChunks: number;
   error: string;
 }
@@ -37,6 +39,11 @@ const FileUpload: React.FC<Props> = ({ onIngested }) => {
     accept: ".docx,.doc,.txt,.md",
     showUploadList: false,
     beforeUpload: (file) => {
+      const MAX_SIZE = 600 * 1024 * 1024; // 600MB
+      if (file.size > MAX_SIZE) {
+        message.error(`${file.name} 超过 600MB 限制，无法上传`);
+        return false;
+      }
       handleUpload(file);
       return false; // 阻止 antd 默认上传行为
     },
@@ -45,7 +52,9 @@ const FileUpload: React.FC<Props> = ({ onIngested }) => {
   const handleUpload = async (file: File) => {
     const item: QueueItem = {
       name: file.name,
+      size: file.size,
       status: "uploading",
+      percent: 0,
       newChunks: 0,
       error: "",
     };
@@ -53,20 +62,30 @@ const FileUpload: React.FC<Props> = ({ onIngested }) => {
     setQueue((prev) => [{ ...item }, ...prev]);
 
     try {
-      const result = await ingestFile(file, categoryRef.current);
+      const result = await ingestFile(file, categoryRef.current, (percent) => {
+        setQueue((prev) =>
+          prev.map((q) =>
+            q.name === file.name && q.status === "uploading"
+              ? { ...q, percent }
+              : q,
+          ),
+        );
+      });
       setQueue((prev) =>
         prev.map((q) =>
           q.name === file.name && q.status === "uploading"
             ? { ...q, status: "done", newChunks: result.new_chunks }
-            : q
-        )
+            : q,
+        ),
       );
       if (result.skipped_chunks > 0) {
         message.info(
-          `${file.name}：${result.new_chunks} 块新增，${result.skipped_chunks} 块已存在`
+          `${file.name}：${result.new_chunks} 块新增，${result.skipped_chunks} 块已存在`,
         );
       } else {
-        message.success(`${file.name} 导入成功，共 ${result.new_chunks} 个片段`);
+        message.success(
+          `${file.name} 导入成功，共 ${result.new_chunks} 个片段`,
+        );
       }
       onIngested();
     } catch (e: any) {
@@ -74,8 +93,8 @@ const FileUpload: React.FC<Props> = ({ onIngested }) => {
         prev.map((q) =>
           q.name === file.name && q.status === "uploading"
             ? { ...q, status: "error", error: e.message }
-            : q
-        )
+            : q,
+        ),
       );
       message.error(`${file.name} 导入失败: ${e.message}`);
     }
@@ -83,9 +102,16 @@ const FileUpload: React.FC<Props> = ({ onIngested }) => {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 10,
+        }}
+      >
         <span style={{ fontWeight: 600, fontSize: 14 }}>导入文档</span>
-        <Tag color="blue">支持 .docx .doc .txt .md</Tag>
+        <Tag color="blue">支持 .docx .doc .txt .md，最大 600MB</Tag>
       </div>
 
       <Radio.Group
@@ -113,7 +139,14 @@ const FileUpload: React.FC<Props> = ({ onIngested }) => {
           dataSource={queue}
           renderItem={(item) => (
             <List.Item style={{ padding: "4px 8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "100%",
+                }}
+              >
                 {item.status === "uploading" && (
                   <Spin indicator={<LoadingOutlined spin />} size="small" />
                 )}
@@ -123,26 +156,39 @@ const FileUpload: React.FC<Props> = ({ onIngested }) => {
                 {item.status === "error" && (
                   <CloseCircleOutlined style={{ color: "#ff4d4f" }} />
                 )}
-                <span
-                  style={{
-                    flex: 1,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    fontSize: 12,
-                    color: "#595959",
-                  }}
-                >
-                  {item.name}
-                </span>
-                {item.status === "done" && (
-                  <Tag color="green" style={{ fontSize: 11 }}>
-                    +{item.newChunks} 块
-                  </Tag>
-                )}
-                {item.status === "error" && (
-                  <span style={{ fontSize: 11, color: "#ff4d4f" }}>{item.error}</span>
-                )}
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  <span
+                    style={{
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: 12,
+                      color: "#595959",
+                    }}
+                  >
+                    {item.name}
+                  </span>
+                  {item.status === "uploading" &&
+                    item.size > 10 * 1024 * 1024 && (
+                      <Progress
+                        percent={item.percent}
+                        size="small"
+                        style={{ marginBottom: 0 }}
+                        format={(p) => `${p}% 上传中`}
+                      />
+                    )}
+                  {item.status === "done" && (
+                    <Tag color="green" style={{ fontSize: 11 }}>
+                      +{item.newChunks} 块
+                    </Tag>
+                  )}
+                  {item.status === "error" && (
+                    <span style={{ fontSize: 11, color: "#ff4d4f" }}>
+                      {item.error}
+                    </span>
+                  )}
+                </div>
               </div>
             </List.Item>
           )}

@@ -98,13 +98,32 @@ log "8️⃣  保存配置..."
 pm2 save
 success "PM2 配置已保存"
 
-# 9. 显示摘要
+# 9. 配置 Nginx 反向代理
+log "9️⃣  配置 Nginx 反向代理..."
+NGINX_CONF="/etc/nginx/conf.d/hik-agent.conf"
+if command -v nginx &> /dev/null; then
+    cp "$SCRIPT_DIR/nginx.conf" "$NGINX_CONF"
+    # 检查配置语法
+    if nginx -t 2>/dev/null; then
+        systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null || true
+        success "Nginx 配置已更新并重载"
+    else
+        warn "Nginx 配置语法错误，请手动检查: nginx -t"
+    fi
+else
+    warn "未检测到 Nginx，请手动安装并应用配置:"
+    warn "  apt-get install -y nginx"
+    warn "  cp $SCRIPT_DIR/nginx.conf $NGINX_CONF"
+    warn "  nginx -t && systemctl reload nginx"
+fi
+
+# 10. 显示摘要
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 pm2 list
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 success "部署完成！"
-log "前端地址: http://localhost:3000"
-log "后端地址: http://localhost:3001"
+log "访问地址: http://$(hostname -I | awk '{print $1}')"
+log "后端地址: http://localhost:3001 (内部)"
 log "查看日志: tail -f $LOG_DIR/*.log"
 log "停止服务: pm2 stop all"
 log "重启服务: pm2 restart all"

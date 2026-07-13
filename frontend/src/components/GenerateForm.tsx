@@ -17,11 +17,9 @@ interface Props {
 }
 
 const DOC_TYPES = [
-  "工程组织方案",
-  "技术交底记录",
-  "工作日志",
+  "工作周报",
   "会议纪要",
-  "技术说明书",
+  "解决方案",
 ];
 
 const GenerateForm: React.FC<Props> = ({ generating, onGenerate }) => {
@@ -35,7 +33,7 @@ const GenerateForm: React.FC<Props> = ({ generating, onGenerate }) => {
     <Form
       form={form}
       layout="vertical"
-      initialValues={{ docType: "技术文档", question: "", extraRequirements: "" }}
+      initialValues={{ docType: "工作周报", question: "", extraRequirements: "" }}
       onFinish={handleFinish}
     >
       <Form.Item label="文档类型" name="docType">

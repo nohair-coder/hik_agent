@@ -1,6 +1,13 @@
 // 文档导入路由
 import { Hono } from "hono";
-import { ingestBuffer, SUPPORTED_EXTENSIONS, type DocCategory } from "../loaders/pipeline.js";
+import { mkdtemp, writeFile, unlink, rmdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  ingestBuffer,
+  SUPPORTED_EXTENSIONS,
+  type DocCategory,
+} from "../loaders/pipeline.js";
 
 export const ingestRouter = new Hono();
 
@@ -24,18 +31,31 @@ ingestRouter.post("/", async (c) => {
 
   if (!SUPPORTED_EXTENSIONS.has(ext)) {
     return c.json(
-      { error: `不支持的文件类型 ${ext}，支持: ${[...SUPPORTED_EXTENSIONS].join(", ")}` },
-      422
+      {
+        error: `不支持的文件类型 ${ext}，支持: ${[...SUPPORTED_EXTENSIONS].join(", ")}`,
+      },
+      422,
     );
   }
 
-  const buffer = Buffer.from(await (file as File).arrayBuffer());
+  let buffer: Buffer | null = Buffer.from(await (file as File).arrayBuffer());
   if (buffer.length === 0) {
     return c.json({ error: "文件内容为空" }, 400);
   }
 
+  // 写入临时文件，传路径给 pipeline（避免 500MB Buffer 长期占用堆内存）
+  const tmpDir = await mkdtemp(join(tmpdir(), "hik-ingest-"));
+  const tmpPath = join(tmpDir, filename);
   try {
-    const result = await ingestBuffer(buffer, filename, category as DocCategory);
+    await writeFile(tmpPath, buffer);
+    // 让 GC 尽早回收 buffer
+    (buffer as any) = null;
+
+    const result = await ingestBuffer(
+      tmpPath,
+      filename,
+      category as DocCategory,
+    );
     return c.json({
       status: "ok",
       filename,
@@ -46,5 +66,8 @@ ingestRouter.post("/", async (c) => {
     });
   } catch (err) {
     return c.json({ error: `导入失败: ${(err as Error).message}` }, 500);
+  } finally {
+    await unlink(tmpPath).catch(() => {});
+    await rmdir(tmpDir).catch(() => {});
   }
 });

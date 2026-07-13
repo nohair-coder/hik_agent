@@ -14,7 +14,8 @@ import { ingestRouter } from "./routes/ingest.js";
 import { collectionsRouter } from "./routes/collections.js";
 import { exportRouter } from "./routes/export.js";
 
-const app = new Hono();
+// strict: false 使 /path 和 /path/ 均可匹配，避免尾部斜杠 404
+const app = new Hono({ strict: false });
 
 // ── 中间件 ──────────────────────────────────────────────────────
 
@@ -23,10 +24,15 @@ app.use("*", logger());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:1420", "tauri://localhost", "https://tauri.localhost", "http://8.136.151.205"],
+    origin: [
+      "http://localhost:1420",
+      "tauri://localhost",
+      "https://tauri.localhost",
+      "http://8.136.151.205",
+    ],
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type"],
-  })
+  }),
 );
 
 // ── 路由挂载 ────────────────────────────────────────────────────
@@ -45,7 +51,14 @@ app.get("/health", async (c) => {
     return c.json({ status: "ok", model: config.modelName });
   } catch (err) {
     // 即使 LLM 调用失败，也返回 model 名称，便于前端展示
-    return c.json({ status: "error", model: config.modelName, error: (err as Error).message }, 503);
+    return c.json(
+      {
+        status: "error",
+        model: config.modelName,
+        error: (err as Error).message,
+      },
+      503,
+    );
   }
 });
 
@@ -58,8 +71,14 @@ try {
   console.warn("⚠ 预热失败，服务仍将启动:", (e as Error).message);
 }
 
-serve({ fetch: app.fetch, port: config.port }, (info) => {
-  console.log(`✓ 服务已启动: http://localhost:${info.port}`);
-  console.log(`  模型: ${config.modelName}`);
-  console.log(`  ChromaDB: ${config.chromaUrl}`);
-});
+serve(
+  {
+    fetch: app.fetch,
+    port: config.port,
+  },
+  (info) => {
+    console.log(`✓ 服务已启动: http://localhost:${info.port}`);
+    console.log(`  模型: ${config.modelName}`);
+    console.log(`  ChromaDB: ${config.chromaUrl}`);
+  },
+);

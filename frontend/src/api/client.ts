@@ -3,40 +3,30 @@
  * 封装 SSE 流式请求和常规 HTTP 请求
  */
 
-// 生产环境通过 nginx 代理，使用相对路径；开发环境指向本地后端
+import http, { get, post, del } from "./http";
+import type {
+  GenerateRequest,
+  IngestResult,
+  CollectionStats,
+  DocumentItem,
+  HealthResult,
+} from "./types";
+
+export type {
+  GenerateRequest,
+  IngestResult,
+  CollectionStats,
+  DocumentItem,
+  HealthResult,
+};
+
+// SSE 流式请求仍使用原生 fetch（axios 不支持浏览器端流式读取）
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-
-export interface GenerateRequest {
-  question: string;
-  doc_type?: string;
-  extra_requirements?: string;
-}
-
-export interface IngestResult {
-  status: string;
-  filename: string;
-  category: string;
-  new_chunks: number;
-  skipped_chunks: number;
-  total_chunks: number;
-}
-
-export interface CollectionStats {
-  engineering_docs: { collection: string; chunk_count: number; description: string };
-  style_samples: { collection: string; chunk_count: number; description: string };
-}
-
-export interface DocumentItem {
-  source_file: string;
-  file_type: string;
-  doc_category: string;
-  chunk_count: number;
-}
 
 // ── 流式生成 ──
 
-export async function* streamGenerate(
-  request: GenerateRequest
+export const streamGenerate = async function* (
+  request: GenerateRequest,
 ): AsyncGenerator<string> {
   const response = await fetch(`${BASE_URL}/api/generate/stream`, {
     method: "POST",
@@ -69,46 +59,45 @@ export async function* streamGenerate(
       }
     }
   }
-}
+};
 
 // ── 文档导入 ──
 
-export async function ingestFile(
+export const ingestFile = async (
   file: File,
-  category: "engineering" | "style"
-): Promise<IngestResult> {
+  category: "engineering" | "style",
+  onProgress?: (percent: number) => void,
+): Promise<IngestResult> => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("category", category);
 
-  const response = await fetch(`${BASE_URL}/api/ingest/`, {
-    method: "POST",
-    body: formData,
+  return post<IngestResult>("/api/ingest/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    // 大文件 30 分钟超时
+    timeout: 30 * 60 * 1000,
+    onUploadProgress: (e: ProgressEvent<HTMLFormElement>) => {
+      if (onProgress && e.total) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    },
   });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(err.detail ?? "导入失败");
-  }
-  return response.json();
-}
+};
 
 // ── 文档导出 ──
 
-export async function exportWord(content: string, filename: string): Promise<void> {
-  const response = await fetch(`${BASE_URL}/api/export/word`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, filename }),
-  });
+export const exportWord = async (
+  content: string,
+  filename: string,
+): Promise<void> => {
+  const response = await http.post(
+    "/api/export/word",
+    { content, filename },
+    { responseType: "blob" },
+  );
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(err.detail ?? "导出失败");
-  }
-
-  const blob = await response.blob();
-  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const blob = response.data as Blob;
+  const disposition = (response.headers["content-disposition"] as string) ?? "";
   const match = disposition.match(/filename\*=UTF-8''(.+)/);
   const serverFilename = match
     ? decodeURIComponent(match[1])
@@ -119,53 +108,38 @@ export async function exportWord(content: string, filename: string): Promise<voi
   a.download = serverFilename;
   a.click();
   URL.revokeObjectURL(url);
-}
+};
 
 // ── 文档库管理 ──
 
-export async function getCollectionStats(): Promise<CollectionStats> {
-  const response = await fetch(`${BASE_URL}/api/collections/stats`);
-  if (!response.ok) throw new Error("获取统计信息失败");
-  return response.json();
-}
+export const getCollectionStats = (): Promise<CollectionStats> => {
+  return get<CollectionStats>("/api/collections/stats");
+};
 
-export async function listDocuments(
-  collection: "engineering" | "style"
-): Promise<{ documents: DocumentItem[]; document_count: number }> {
-  const response = await fetch(`${BASE_URL}/api/collections/${collection}/documents`);
-  if (!response.ok) throw new Error("获取文档列表失败");
-  return response.json();
-}
-
-export async function deleteDocument(
+export const listDocuments = (
   collection: "engineering" | "style",
-  sourceFile: string
-): Promise<void> {
-  const response = await fetch(
-    `${BASE_URL}/api/collections/${collection}/documents/${encodeURIComponent(sourceFile)}`,
-    { method: "DELETE" }
+): Promise<{ documents: DocumentItem[]; document_count: number }> => {
+  return get(`/api/collections/${collection}/documents`);
+};
+
+export const deleteDocument = (
+  collection: "engineering" | "style",
+  sourceFile: string,
+): Promise<void> => {
+  return del(
+    `/api/collections/${collection}/documents/${encodeURIComponent(sourceFile)}`,
   );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(err.detail ?? "删除失败");
-  }
-}
+};
 
 // ── 健康检查 ──
 
-export interface HealthResult {
-  online: boolean;
-  model?: string;
-}
-
-export async function checkHealth(): Promise<HealthResult> {
+export const checkHealth = async (): Promise<HealthResult> => {
   try {
-    const response = await fetch(`${BASE_URL}/health`, {
-      signal: AbortSignal.timeout(3000),
+    const data = await get<{ status: string; model?: string }>("/health", {
+      timeout: 3000,
     });
-    const data = await response.json();
     return { online: data.status === "ok", model: data.model };
   } catch {
     return { online: false };
   }
-}
+};
